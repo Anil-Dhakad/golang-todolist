@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 
@@ -47,8 +46,6 @@ func UpdateItem(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := strconv.Atoi(vars["id"])
 
-	fmt.Println("id: ", id)
-
 	// Test if the TodoItem exist in DB
 	err := GetItemByID(id)
 	if err == false {
@@ -66,10 +63,29 @@ func UpdateItem(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func DeleteItem(w http.ResponseWriter, r *http.Request) {
+	// Get URL parameter from mux
+	vars := mux.Vars(r)
+	id, _ := strconv.Atoi(vars["id"])
+
+	// Test if the TodoItem exist in DB
+	err := GetItemByID(id)
+	if err == false {
+		w.Header().Set("Content-Type", "application/json")
+		io.WriteString(w, `{"deleted": false, "error": "Record Not Found"}`)
+	} else {
+		log.WithFields(log.Fields{"Id": id}).Info("Deleting TodoItem")
+		todo := &TodoItemModel{}
+		db.First(&todo, id)
+		db.Delete(&todo)
+		w.Header().Set("Content-Type", "application/json")
+		io.WriteString(w, `{"deleted": true}`)
+	}
+}
+
 func GetItemByID(Id int) bool {
 	todo := &TodoItemModel{}
 	result := db.First(&todo, Id)
-	fmt.Println("result: ", result)
 	if result.Error != nil {
 		log.Warn("TodoItem not found in database")
 		return false
@@ -94,6 +110,7 @@ func main() {
 	router.HandleFunc("/healthz", Healthz).Methods("GET")
 	router.HandleFunc("/todo", CreateItem).Methods("POST")
 	router.HandleFunc("/todo/{id}", UpdateItem).Methods("POST")
+	router.HandleFunc("/todo/{id}", DeleteItem).Methods("DELETE")
 
 	http.ListenAndServe(":8000", router)
 }
