@@ -11,7 +11,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+//////// MySQL connections
 var db, _ = gorm.Open("mysql", "root:@/golang_todolist?charset=utf8&parseTime=True&loc=Local")
+
+/////// GORM model
+type TodoItemModel struct {
+	Id          int `gorm:"primary_key"`
+	Description string
+	Completed   bool
+}
 
 func Healthz(w http.ResponseWriter, r *http.Request) {
 	log.Info("API Health is OK")
@@ -26,6 +34,9 @@ func init() {
 
 func main() {
 	defer db.Close()
+
+	db.Debug().DropTableIfExists(&TodoItemModel{})
+	db.Debug().AutoMigrate(&TodoItemModel{})
 
 	log.Info("Starting Todolist API server")
 	router := mux.NewRouter()
